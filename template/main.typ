@@ -1,11 +1,13 @@
-#import "@preview/zhaji:0.1.0": *
-// #import "../lib.typ": *
+// #import "@preview/zhaji:0.1.0": *
+#import "../lib.typ": *
 #let my-font-head = ("Arial", "Noto Sans SC")
-#show: note.with(
+#let note-obj = note(
   font-head: my-font-head,
   font-text: ("Times New Roman", "SimSun"),
-  first-line-indent: 0em
+  first-line-indent: 0em,
+  lang: "en"
 )
+#show: note-obj.make
 
 = 引论
 这是引论
@@ -23,15 +25,15 @@
 根据基本物理定律，变化率满足：
 $ frac(dd x, dd t) = - k x. $
 
-#def[系统状态][
+#(note-obj.def)[系统状态][
   系统在时刻 $t$ 的全部特征由状态变量 $x(t)$ 唯一刻画。
 ]
 
-#thm[衰减解的存在性][
+#(note-obj.thm)[衰减解的存在性][
   方程的通解具有指数形式：
   $ x(t) = C e^(- k t), quad C in R. $
 ]
 
-#hint(font-head: my-font-head)[思考与拓展][
+#(note-obj.hint)[思考与拓展][
   若初始时刻满足 $x(0) = x_0$，则特解为 $x(t) = x_0 e^(- k t)$。当 $t -> +infinity$ 时系统状态渐近趋向于稳定平衡态。
 ]
