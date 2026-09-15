@@ -14,16 +14,6 @@
 // 数学公式
 #let font-math = ("New Computer Modern Math", "New Computer Modern")
 
-#let thm-name = (
-  "zh": "定理",
-  "en": "Theorem",
-)
-
-#let def-name = (
-  "zh": "定义",
-  "en": "Definition",
-)
-
 // ---------- 页面用色 ----------
 #let c-accent = rgb("#222222")
 #let c-remark = rgb("#777777")
@@ -46,255 +36,250 @@
   region: "cn",
   first-line-indent: 2em,
   leading: 0.86em,
+  body,
 ) = {
-  // ---------- 提示块：通用环境，同时支持标准中括号语法与旧式命名参数 ----------
-  let hint(..args) = {
-    let pos = args.pos()
-    let named = args.named()
-    let style = named.at("style", default: "gray")
-    let (title, body) = if pos.len() >= 2 {
-      (pos.at(0), pos.at(1))
-    } else if pos.len() == 1 {
-      (named.at("title", default: none), pos.at(0))
-    } else {
-      (none, [])
-    }
-    let colors = (gray: rgb("#777777"), blue: rgb("#526b84"), amber: rgb("#96704a"))
-    let border-color = colors.at(style, default: rgb("#777777"))
+  // 全局正文字体与段落规范（在顶层生效）
+  set text(font: font-text, size: font-size, lang: lang, region: region)
+  set par(justify: true, leading: leading, first-line-indent: first-line-indent)
+  set math.equation(numbering: none)
+  show math.equation: set text(font: font-math)
+  show math.equation.where(block: false): it => it
 
-    block(
-      breakable: true,
-      width: 100%,
-      inset: (x: 0.75em, y: 0.45em),
-      stroke: (left: 1pt + border-color),
-    )[
-      #set par(first-line-indent: 0em, justify: true)
-      #if title != none {
-        text(font: font-head, weight: "regular", fill: c-accent)[#title]
-        h(0.6em)
-      }
-      #body
-    ]
-  }
+  // 全局标题样式（免冗余数字编号，层级视觉对比极其分明）
+  // Level 1: 大章 / 课程主题（底置主题色横线）
+  show heading.where(level: 1): it => context block(width: 100%, above: 2.4em, below: calc.max(1.2em, par.spacing))[
+    #set text(font: font-head, size: 20pt, weight: "bold", fill: c-accent)
+    #it.body
+    #v(0.35em)
+    #line(length: 100%, stroke: 0.75pt + c-blue)
+  ]
 
-  // ---------- 极轻量语义宏（仅提供最少两项：定理、定义，无记忆负担） ----------
-  let thm(..args) = {
-    let pos = args.pos()
-    let named = args.named()
-    let (title, body) = if pos.len() >= 2 {
-      (pos.at(0), pos.at(1))
-    } else if pos.len() == 1 {
-      (named.at("title", default: none), pos.at(0))
-    } else {
-      (none, [])
-    }
-    hint(
-      title: if title != none [#thm-name.at(lang) · #title] else [#thm-name.at(lang)],
-      style: "blue",
-      body,
+  // Level 2: 大节（左侧 3.5pt 蓝灰坚挺色标，上方充分留白，一眼认出新大节）
+  show heading.where(level: 2): it => context block(width: 100%, above: 2.0em, below: calc.max(0.85em, par.leading))[
+    #grid(
+      columns: (auto, 1fr),
+      gutter: 0.55em,
+      align: (left + horizon, left + horizon),
+      rect(width: 3.5pt, height: 1.15em, fill: c-blue, radius: 1pt),
+      text(font: font-head, size: 15pt, weight: "bold", fill: c-accent)[#it.body],
     )
-  }
+  ]
 
-  let def(..args) = {
-    let pos = args.pos()
-    let named = args.named()
-    let (title, body) = if pos.len() >= 2 {
-      (pos.at(0), pos.at(1))
-    } else if pos.len() == 1 {
-      (named.at("title", default: none), pos.at(0))
+  // Level 3: 具体模型 / 核心课题（前置精致实心小方块，字号 12.5pt）
+  show heading.where(level: 3): it => context block(above: 1.4em, below: calc.max(0.6em, par.leading))[
+    // 因为 ■ 比 font-head 小了 4pt, 所以要上移 baseline 2pt，下同
+    #text(fill: c-blue, size: 8.5pt, baseline: -2pt)[■]
+    #h(0.45em)
+    #text(font: font-head, size: 12.5pt, weight: "bold", fill: c-accent)[#it.body]
+  ]
+
+  // Level 4: 具体分析环节 / 步骤分支（11pt 黑体，前置优雅小短杠引领）
+  show heading.where(level: 4): it => context block(above: 1.0em, below: calc.max(0.45em, par.leading))[
+    // 因为c-remark 比 font-head 小了 2pt，所以要上移 baseline 1pt
+    #text(fill: c-remark, size: 9pt, baseline: -1pt)[–]
+    #h(0.35em)
+    #text(font: font-head, size: 11pt, weight: "bold", fill: rgb("#444444"))[#it.body]
+  ]
+
+  if mode == "book" {
+    __is_book.update(true)
+
+    let doc-meta-title = if title != "" {
+      title
     } else {
-      (none, [])
+      "课程讲义与笔记"
     }
-    hint(
-      title: if title != none [#def-name.at(lang) · #title] else [#def-name.at(lang)],
-      style: "blue",
-      body,
+
+    set document(
+      title: doc-meta-title,
+      author: if author != "" { author } else { () },
     )
-  }
 
-  let make(body) = {
-    // 全局正文字体与段落规范（在顶层生效）
-    set text(font: font-text, size: font-size, lang: lang, region: region)
-    set par(justify: true, leading: leading, first-line-indent: first-line-indent)
-    set math.equation(numbering: none)
-    show math.equation: set text(font: font-math)
-    show math.equation.where(block: false): it => it
+    // 1. 封面页：纯净无页眉页脚
+    set page(
+      paper: "a4",
+      margin: (x: 2.55cm, top: 2.2cm, bottom: 2.25cm),
+      header: none,
+      footer: none,
+    )
 
-    // 全局标题样式（免冗余数字编号，层级视觉对比极其分明）
-    // Level 1: 大章 / 课程主题（底置主题色横线）
-    show heading.where(level: 1): it => context block(width: 100%, above: 2.4em, below: calc.max(1.2em, par.spacing))[
-      #set text(font: font-head, size: 20pt, weight: "bold", fill: c-accent)
-      #it.body
-      #v(0.35em)
-      #line(length: 100%, stroke: 0.75pt + c-blue)
-    ]
-
-    // Level 2: 大节（左侧 3.5pt 蓝灰坚挺色标，上方充分留白，一眼认出新大节）
-    show heading.where(level: 2): it => context block(width: 100%, above: 2.0em, below: calc.max(0.85em, par.leading))[
-      #grid(
-        columns: (auto, 1fr),
-        gutter: 0.55em,
-        align: (left + horizon, left + horizon),
-        rect(width: 3.5pt, height: 1.15em, fill: c-blue, radius: 1pt),
-        text(font: font-head, size: 15pt, weight: "bold", fill: c-accent)[#it.body],
-      )
-    ]
-
-    // Level 3: 具体模型 / 核心课题（前置精致实心小方块，字号 12.5pt）
-    show heading.where(level: 3): it => context block(above: 1.4em, below: calc.max(0.6em, par.leading))[
-      // 因为 ■ 比 font-head 小了 4pt, 所以要上移 baseline 2pt，下同
-      #text(fill: c-blue, size: 8.5pt, baseline: -2pt)[■]
-      #h(0.45em)
-      #text(font: font-head, size: 12.5pt, weight: "bold", fill: c-accent)[#it.body]
-    ]
-
-    // Level 4: 具体分析环节 / 步骤分支（11pt 黑体，前置优雅小短杠引领）
-    show heading.where(level: 4): it => context block(above: 1.0em, below: calc.max(0.45em, par.leading))[
-      // 因为c-remark 比 font-head 小了 2pt，所以要上移 baseline 1pt
-      #text(fill: c-remark, size: 9pt, baseline: -1pt)[–]
-      #h(0.35em)
-      #text(font: font-head, size: 11pt, weight: "bold", fill: rgb("#444444"))[#it.body]
-    ]
-
-
-    if mode == "book" {
-      __is_book.update(true)
-
-      let doc-meta-title = if title != "" {
-        title
-      } else {
-        "课程讲义与笔记"
-      }
-
-      set document(
-        title: doc-meta-title,
-        author: if author != "" { author } else { () },
-      )
-
-      // 1. 封面页：纯净无页眉页脚
-      set page(
-        paper: "a4",
-        margin: (x: 2.55cm, top: 2.2cm, bottom: 2.25cm),
-        header: none,
-        footer: none,
-      )
-
-      let cover-title = if title != "" {
-        title
-      } else {
-        context {
-          let h1 = query(heading.where(level: 1))
-          if h1.len() > 0 { h1.first().body } else { "课程笔记" }
-        }
-      }
-
-      align(center + horizon)[
-        #v(-2cm)
-        #text(font: font-head, size: 28pt, weight: "bold")[#cover-title]
-        #if subtitle != none and subtitle != "" [
-          #v(1.2em)
-          #text(font: font-text, size: 13.5pt, fill: c-remark)[#subtitle]
-        ]
-        #if author != "" [
-          #v(2.5em)
-          #text(font: font-text, size: 12pt, fill: c-accent)[#author]
-        ]
-        #v(5.5cm)
-        #if date == auto [
-          #text(font: font-text, size: 10pt, fill: c-remark)[
-            #datetime.today().display("[year] 年 [month] 月")
-          ]
-        ] else if date != none and date != "" [
-          #text(font: font-text, size: 10pt, fill: c-remark)[#date]
-        ]
-      ]
-      pagebreak()
-
-      // 2. 目录页（深度为 2：仅收录大章与大节，结构极其利落）
-      outline(title: "目 录", depth: 2, indent: 1.5em)
-      pagebreak()
-
-      // 3. 正文页面：页眉放章节标题与横线，页码居中位于页脚
-      set page(
-        paper: "a4",
-        margin: (x: 2.55cm, top: 2.2cm, bottom: 2.25cm),
-        header: context {
-          let p = counter(page).get().first()
-          let on-page = query(heading).filter(h => counter(page).at(h.location()).first() == p)
-          let before-page = query(selector(heading).before(here()))
-          let cur = if on-page.len() > 0 { on-page.first() } else if before-page.len() > 0 { before-page.last() } else { none }
-          let head-text = if cur != none {
-            cur.body
-          } else if title != "" {
-            title
-          } else {
-            "课程笔记"
-          }
-          set text(font: font-head, size: 8.5pt, fill: c-remark)
-          align(left)[#head-text]
-          v(-0.6em)
-          line(length: 100%, stroke: 0.4pt + luma(70%))
-        },
-        footer: context {
-          align(center)[
-            #set text(font: font-text, size: 8.5pt, fill: c-remark)
-            #counter(page).display("1")
-          ]
-        },
-      )
-      counter(page).update(1)
-
-      body
+    let cover-title = if title != "" {
+      title
     } else {
-      // 课时单课模式
       context {
-        if __is_book.get() {
-          // 全书模式下子文件直接放行正文，绝不重复调用 set page
-          body
-        } else {
-          let hs2 = query(heading.where(level: 2))
-          let hs1 = query(heading.where(level: 1))
-          let running-title = if title != "" {
-            title
-          } else if hs2.len() > 0 {
-            hs2.first().body
-          } else if hs1.len() > 0 {
-            hs1.first().body
-          } else {
-            "课堂笔记"
-          }
-
-          set document(
-            title: running-title,
-            author: if author != "" { author } else { () },
-          )
-
-          set page(
-            paper: "a4",
-            margin: (x: 2.55cm, top: 2.2cm, bottom: 2.25cm),
-            header: {
-              set text(font: font-head, size: 8.5pt, fill: c-remark)
-              align(left)[#running-title]
-              v(-0.6em)
-              line(length: 100%, stroke: 0.4pt + luma(70%))
-            },
-            footer: context {
-              align(center)[
-                #set text(font: font-text, size: 8.5pt, fill: c-remark)
-                #counter(page).display("1")
-              ]
-            },
-          )
-
-          body
-        }
+        let h1 = query(heading.where(level: 1))
+        if h1.len() > 0 { h1.first().body } else { "课程笔记" }
       }
-  }
-  }
+    }
 
-  (make: make, thm: thm, def: def, hint: hint)
+    align(center + horizon)[
+      #v(-2cm)
+      #text(font: font-head, size: 28pt, weight: "bold")[#cover-title]
+      #if subtitle != none and subtitle != "" [
+        #v(1.2em)
+        #text(font: font-text, size: 13.5pt, fill: c-remark)[#subtitle]
+      ]
+      #if author != "" [
+        #v(2.5em)
+        #text(font: font-text, size: 12pt, fill: c-accent)[#author]
+      ]
+      #v(5.5cm)
+      #if date == auto [
+        #text(font: font-text, size: 10pt, fill: c-remark)[
+          #datetime.today().display("[year] 年 [month] 月")
+        ]
+      ] else if date != none and date != "" [
+        #text(font: font-text, size: 10pt, fill: c-remark)[#date]
+      ]
+    ]
+    pagebreak()
+
+    // 2. 目录页（深度为 2：仅收录大章与大节，结构极其利落）
+    outline(title: "目 录", depth: 2, indent: 1.5em)
+    pagebreak()
+
+    // 3. 正文页面：页眉放章节标题与横线，页码居中位于页脚
+    set page(
+      paper: "a4",
+      margin: (x: 2.55cm, top: 2.2cm, bottom: 2.25cm),
+      header: context {
+        let p = counter(page).get().first()
+        let on-page = query(heading).filter(h => counter(page).at(h.location()).first() == p)
+        let before-page = query(selector(heading).before(here()))
+        let cur = if on-page.len() > 0 { on-page.first() } else if before-page.len() > 0 { before-page.last() } else { none }
+        let head-text = if cur != none {
+          cur.body
+        } else if title != "" {
+          title
+        } else {
+          "课程笔记"
+        }
+        set text(font: font-head, size: 8.5pt, fill: c-remark)
+        align(left)[#head-text]
+        v(-0.6em)
+        line(length: 100%, stroke: 0.4pt + luma(70%))
+      },
+      footer: context {
+        align(center)[
+          #set text(font: font-text, size: 8.5pt, fill: c-remark)
+          #counter(page).display("1")
+        ]
+      },
+    )
+    counter(page).update(1)
+
+    body
+  } else {
+    // 课时单课模式
+    context {
+      if __is_book.get() {
+        // 全书模式下子文件直接放行正文，绝不重复调用 set page
+        body
+      } else {
+        let hs2 = query(heading.where(level: 2))
+        let hs1 = query(heading.where(level: 1))
+        let running-title = if title != "" {
+          title
+        } else if hs2.len() > 0 {
+          hs2.first().body
+        } else if hs1.len() > 0 {
+          hs1.first().body
+        } else {
+          "课堂笔记"
+        }
+
+        set document(
+          title: running-title,
+          author: if author != "" { author } else { () },
+        )
+
+        set page(
+          paper: "a4",
+          margin: (x: 2.55cm, top: 2.2cm, bottom: 2.25cm),
+          header: {
+            set text(font: font-head, size: 8.5pt, fill: c-remark)
+            align(left)[#running-title]
+            v(-0.6em)
+            line(length: 100%, stroke: 0.4pt + luma(70%))
+          },
+          footer: context {
+            align(center)[
+              #set text(font: font-text, size: 8.5pt, fill: c-remark)
+              #counter(page).display("1")
+            ]
+          },
+        )
+
+        body
+      }
+    }
+  }
 }
 
+// ---------- 提示块：通用环境，同时支持标准中括号语法与旧式命名参数 ----------
+#let hint(font-head: font-head, ..args) = {
+  let pos = args.pos()
+  let named = args.named()
+  let style = named.at("style", default: "gray")
+  let (title, body) = if pos.len() >= 2 {
+    (pos.at(0), pos.at(1))
+  } else if pos.len() == 1 {
+    (named.at("title", default: none), pos.at(0))
+  } else {
+    (none, [])
+  }
+  let colors = (gray: rgb("#777777"), blue: rgb("#526b84"), amber: rgb("#96704a"))
+  let border-color = colors.at(style, default: rgb("#777777"))
+
+  block(
+    breakable: true,
+    width: 100%,
+    inset: (x: 0.75em, y: 0.45em),
+    stroke: (left: 1pt + border-color),
+  )[
+    #set par(first-line-indent: 0em, justify: true)
+    #if title != none {
+      text(font: font-head, weight: "regular", fill: c-accent)[#title]
+      h(0.6em)
+    }
+    #body
+  ]
+}
+
+// ---------- 极轻量语义宏（仅提供最少两项：定理、定义，无记忆负担） ----------
+#let thm(..args) = {
+  let pos = args.pos()
+  let named = args.named()
+  let (title, body) = if pos.len() >= 2 {
+    (pos.at(0), pos.at(1))
+  } else if pos.len() == 1 {
+    (named.at("title", default: none), pos.at(0))
+  } else {
+    (none, [])
+  }
+  hint(
+    title: if title != none [定理 · #title] else [定理],
+    style: "blue",
+    body,
+  )
+}
+
+#let def(..args) = {
+  let pos = args.pos()
+  let named = args.named()
+  let (title, body) = if pos.len() >= 2 {
+    (pos.at(0), pos.at(1))
+  } else if pos.len() == 1 {
+    (named.at("title", default: none), pos.at(0))
+  } else {
+    (none, [])
+  }
+  hint(
+    title: if title != none [定义 · #title] else [定义],
+    style: "blue",
+    body,
+  )
+}
 
 // ---------- 强调与常用简写 ----------
 #let emph(body) = text(font: font-head, weight: "bold", fill: c-emph)[#body]
