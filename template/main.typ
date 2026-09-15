@@ -1,5 +1,5 @@
-// #import "@preview/zhaji:0.1.0": *
-#import "../lib.typ": *
+#import "@preview/zhaji:0.1.0": *
+// #import "../lib.typ": *
 #let my-font-head = ("Arial", "Noto Sans SC")
 #show: note.with(
   font-head: my-font-head,
